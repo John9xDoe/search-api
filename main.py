@@ -1,12 +1,14 @@
 import os
 from contextlib import asynccontextmanager
 from uuid import uuid4
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 import psycopg
 
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
+
 
 class DocumentIn(BaseModel):
     title: str = Field(min_length=1, max_length=100)
@@ -24,6 +26,13 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://searchapi:searchapi@localhost:5432/searchapi",
 )
+
+@app.exception_handler(psycopg.Error)
+async def psycopg_error_handler(_request: Request, _exc: psycopg.Error):
+    return JSONResponse(
+        status_code=503,
+        content={"error": {"code" : "db_unavailable", "message" : "Database unavailable"}},
+    )
 
 def db_ping() -> int:
     with psycopg.connect(DATABASE_URL) as conn:
